@@ -41,13 +41,14 @@ class Groups:
         """
 
     @staticmethod
-    def get_groups(guests: Dict[str, Any], nodes: Dict[str, Any]) -> Dict[str, Any]:
+    def get_groups(guests: Dict[str, Any], nodes: Dict[str, Any], proxlb_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generates and returns a dictionary of affinity and anti-affinity groups based on the provided data.
 
         Args:
             guests (Dict[str, Any]): A dictionary containing the guest data.
             nodes  (Dict[str, Any]): A dictionary containing the nodes data.
+            proxlb_config (Dict): A dict holding the ProxLB configuration.
 
         Returns:
             Dict[str, Any]: A dictionary containing the created groups that includes:
@@ -119,6 +120,17 @@ class Groups:
             if nodes["nodes"][guest_meta["node_current"]]["maintenance"]:
                 logger.debug(f'{guest_name} will be migrated to another node because the underlying node {guest_meta["node_current"]} is defined to be in maintenance.')
                 groups["groups"]["maintenance"].append(guest_name)
+
+        # If we're operating based on used or assigned memory, sort the output from
+        # highest to lowest usage, ensuring that we place large workloads first and
+        # then stack smaller workloads around them.
+        balancing_config = proxlb_config.get("balancing", {})
+        method = balancing_config.get("method", "memory")
+        mode = balancing_config.get("mode", "used")
+        lookup_modes = { "assigned": "total" }
+        lookup_mode = lookup_modes.get(mode, "used")
+        sort_key = f"{method}_{lookup_mode}"
+        groups["groups"]["affinity"] = dict(sorted(groups["groups"]["affinity"].items(), key=lambda item: item[1][sort_key], reverse=True))
 
         logger.debug("Finished: get_groups.")
         return groups

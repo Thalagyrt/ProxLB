@@ -75,7 +75,7 @@ def main():
         nodes = Nodes.get_nodes(proxmox_api, proxlb_config)
         pools = Pools.get_pools(proxmox_api)
         guests = Guests.get_guests(proxmox_api, pools, nodes, meta, proxlb_config)
-        groups = Groups.get_groups(guests, nodes)
+        groups = Groups.get_groups(guests, nodes, proxlb_config)
 
         # Merge obtained objects from the Proxmox cluster for further usage
         proxlb_data = {**meta, **nodes, **guests, **pools, **groups}
